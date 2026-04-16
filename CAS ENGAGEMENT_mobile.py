@@ -60,27 +60,29 @@ with st.form("engagement_form", clear_on_submit=True):
     # Riga 1: Nome e Cognome
     c1, c2 = st.columns(2)
     with c1:
-        nome = st.text_input("NOME")
+        nome = st.text_input("NOME (Opzionale)")
     with c2:
-        cognome = st.text_input("COGNOME")
+        cognome = st.text_input("COGNOME *")
     
     # Riga 2: Telefono e Email
     c3, c4 = st.columns(2)
     with c3:
-        tel = st.text_input("NUMERO DI TELEFONO")
+        tel = st.text_input("NUMERO DI TELEFONO (Opzionale)")
     with c4:
-        email = st.text_input("E-MAIL")
+        email = st.text_input("E-MAIL (Opzionale)")
     
-    # Campo Drop-Down Referente
+    # Campo Drop-Down Referente (Obbligatorio)
     referente = st.selectbox(
-        "REFERENTE",
-        options=["TERRANI", "CENTOLA", "SANGUINETTI", "COLOMBO", "CATELLO"]
+        "REFERENTE *",
+        options=["", "TERRANI", "CENTOLA", "SANGUINETTI", "COLOMBO", "CATELLO"],
+        index=0,
+        help="Seleziona il referente dell'incontro"
     )
     
     cas_engagement = st.text_area(
-        "CAS ENGAGEMENT", 
+        "CAS ENGAGEMENT *", 
         height=250, 
-        placeholder="Inserisci qui i dettagli dell'incontro..."
+        placeholder="Inserisci qui i dettagli dell'incontro (Obbligatorio)..."
     )
     
     submit = st.form_submit_button("SALVA ANAGRAFICA CLIENTE")
@@ -89,16 +91,17 @@ with st.form("engagement_form", clear_on_submit=True):
 db_path = "database_clienti_web.csv"
 
 if submit:
-    if nome and cognome:
+    # CONTROLLO CAMPI OBBLIGATORI (Cognome, Referente non vuoto, Testo engagement)
+    if cognome.strip() and referente != "" and cas_engagement.strip():
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
         
         # Preparazione dati per CSV
         new_data = {
             "Data": [timestamp],
-            "Nome": [nome],
+            "Nome": [nome if nome else "-"],
             "Cognome": [cognome],
-            "Telefono": [tel],
-            "Email": [email],
+            "Telefono": [tel if tel else "-"],
+            "Email": [email if email else "-"],
             "Referente": [referente],
             "Engagement": [cas_engagement.replace("\n", " ")]
         }
@@ -110,7 +113,7 @@ if submit:
         else:
             df.to_csv(db_path, mode='a', header=False, index=False)
             
-        st.success(f"✅ Dati di {nome} {cognome} salvati con successo!")
+        st.success(f"✅ Engagement salvato per il cliente {cognome}!")
         
         # --- GENERAZIONE PDF ---
         pdf = FPDF()
@@ -133,8 +136,8 @@ if submit:
         pdf.set_fill_color(230, 230, 230)
         pdf.cell(0, 10, " DATI CLIENTE E REFERENTE", 1, 1, "L", True)
         pdf.set_font("Arial", "", 11)
-        pdf.cell(0, 10, f"Nominativo: {nome} {cognome}", 1, 1)
-        pdf.cell(0, 10, f"Tel: {tel} | Email: {email}", 1, 1)
+        pdf.cell(0, 10, f"Nominativo: {nome + ' ' if nome else ''}{cognome}", 1, 1)
+        pdf.cell(0, 10, f"Tel: {tel if tel else 'N/D'} | Email: {email if email else 'N/D'}", 1, 1)
         pdf.cell(0, 10, f"Referente Terrani Imaging: {referente}", 1, 1)
         
         # Sezione Note
@@ -145,7 +148,7 @@ if submit:
         pdf.multi_cell(0, 10, cas_engagement)
         
         pdf_name = f"Engagement_{cognome}.pdf"
-        pdf_bytes = pdf.output(dest='S').encode('latin-1')
+        pdf_bytes = pdf.output(dest='S').encode('latin-1', 'ignore')
         
         st.download_button(
             label="📥 SCARICA SCHEDA PDF",
@@ -154,7 +157,13 @@ if submit:
             mime="application/pdf"
         )
     else:
-        st.error("⚠️ Errore: Nome e Cognome sono campi obbligatori.")
+        # Messaggio di errore specifico se mancano i campi richiesti
+        error_msg = "⚠️ I seguenti campi sono obbligatori: "
+        missing = []
+        if not cognome.strip(): missing.append("COGNOME")
+        if referente == "": missing.append("REFERENTE")
+        if not cas_engagement.strip(): missing.append("CAS ENGAGEMENT")
+        st.error(error_msg + ", ".join(missing))
 
 # --- VISUALIZZAZIONE STORICO ---
 st.divider()
