@@ -91,13 +91,19 @@ st.divider()
 
 # --- FORM DI INSERIMENTO ---
 with st.form("engagement_form", clear_on_submit=True):
+    # Riga 1: Nome e Cognome
     c1, c2 = st.columns(2)
     with c1:
         nome = st.text_input("NOME")
-        email = st.text_input("E-MAIL")
     with c2:
         cognome = st.text_input("COGNOME")
-        tel = st.text_input("TELEFONO")
+    
+    # Riga 2: Telefono e Email
+    c3, c4 = st.columns(2)
+    with c3:
+        tel = st.text_input("NUMERO DI TELEFONO")
+    with c4:
+        email = st.text_input("E-MAIL")
     
     cas_engagement = st.text_area(
         "CAS ENGAGEMENT", 
@@ -105,7 +111,7 @@ with st.form("engagement_form", clear_on_submit=True):
         placeholder="Inserisci qui i dettagli dell'incontro (Note tecniche, opportunità, ecc...)"
     )
     
-    # Questo pulsante userà lo stile CSS definito sopra
+    # Pulsante di salvataggio
     submit = st.form_submit_button("SALVA ANAGRAFICA CLIENTE")
 
 # --- LOGICA DI SALVATAGGIO ---
@@ -115,13 +121,13 @@ if submit:
     if nome and cognome:
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        # Preparazione dati per CSV
+        # Preparazione dati per CSV (mantenendo l'ordine logico anche nel database)
         new_data = {
             "Data": [timestamp],
             "Nome": [nome],
             "Cognome": [cognome],
-            "Email": [email],
             "Telefono": [tel],
+            "Email": [email],
             "Engagement": [cas_engagement.replace("\n", " ")]
         }
         df = pd.DataFrame(new_data)
@@ -151,13 +157,13 @@ if submit:
         pdf.cell(0, 10, f"Data report: {timestamp}", ln=True)
         pdf.ln(10)
         
-        # Sezione Anagrafica
+        # Sezione Anagrafica (Ordine PDF aggiornato)
         pdf.set_font("Arial", "B", 12)
         pdf.set_fill_color(230, 230, 230)
         pdf.cell(0, 10, " DATI CLIENTE", 1, 1, "L", True)
         pdf.set_font("Arial", "", 11)
         pdf.cell(0, 10, f"Nominativo: {nome} {cognome}", 1, 1)
-        pdf.cell(0, 10, f"Contatti: {email} | {tel}", 1, 1)
+        pdf.cell(0, 10, f"Tel: {tel} | Email: {email}", 1, 1)
         
         # Sezione Note
         pdf.ln(5)
@@ -169,7 +175,7 @@ if submit:
         pdf_name = f"Engagement_{cognome}.pdf"
         pdf_bytes = pdf.output(dest='S').encode('latin-1')
         
-        # Tasto download PDF (appare solo dopo il salvataggio)
+        # Tasto download PDF
         st.download_button(
             label="📥 SCARICA SCHEDA PDF",
             data=pdf_bytes,
@@ -185,7 +191,6 @@ show_db = st.checkbox("Visualizza Storico Database")
 if show_db:
     if os.path.exists(db_path):
         history_df = pd.read_csv(db_path)
-        # Visualizzazione tabella con stile scuro
         st.dataframe(history_df, use_container_width=True)
     else:
         st.info("Il database è attualmente vuoto.")
