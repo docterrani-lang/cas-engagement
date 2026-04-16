@@ -11,27 +11,12 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- STILE CSS PERSONALIZZATO (Look Dark/Blue & Testi Bianchi) ---
+# --- STILE CSS PERSONALIZZATO ---
 st.markdown("""
     <style>
-    /* Sfondo generale dell'app */
-    .stApp { 
-        background-color: #101010; 
-    }
-    
-    /* Titoli dei campi (Label) forzati in Bianco */
-    label { 
-        color: white !important; 
-        font-weight: bold !important;
-        font-size: 1.1rem !important;
-    }
-    
-    /* Testo dei paragrafi e markdown */
-    .stMarkdown p { 
-        color: white !important; 
-    }
-    
-    /* Stile del tasto di salvataggio (Blu con scritta Bianca) */
+    .stApp { background-color: #101010; }
+    label { color: white !important; font-weight: bold !important; font-size: 1.1rem !important; }
+    .stMarkdown p { color: white !important; }
     .stButton>button { 
         background-color: #1f538d !important; 
         color: white !important; 
@@ -43,44 +28,25 @@ st.markdown("""
         font-size: 18px !important;
         margin-top: 20px;
     }
-    
-    /* Effetto Hover sul tasto */
-    .stButton>button:hover {
-        background-color: #2a71c2 !important;
-        border-color: #2a71c2 !important;
-        color: white !important;
-    }
-
-    /* Stile dei campi di input (Sfondo scuro, testo bianco) */
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+    .stButton>button:hover { background-color: #2a71c2 !important; border-color: #2a71c2 !important; color: white !important; }
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div {
         background-color: #1a1a1a !important;
         color: white !important;
         border: 1px solid #444 !important;
         border-radius: 8px !important;
     }
-
-    /* Colore dei titoli H1 e H3 */
-    h1, h3 {
-        color: #1f538d !important;
-        font-weight: bold !important;
-    }
-
-    /* Stile per il checkbox dello storico */
-    .stCheckbox {
-        color: white !important;
-    }
+    h1, h3 { color: #1f538d !important; font-weight: bold !important; }
+    .stCheckbox { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- HEADER CON LOGO A DESTRA ---
+# --- HEADER CON LOGO ---
 col_titles, col_logo = st.columns([2, 1])
-
 with col_titles:
     st.title("CUSTOMER ENGAGEMENT")
     st.write("Terrani Imaging Solutions - Mobile CRM")
 
 with col_logo:
-    # Cerca il logo nella cartella corrente (GitHub)
     logo_fn = "LOGO TERRANI IMAGING SOLUTIONS.png"
     if os.path.exists(logo_fn):
         st.image(logo_fn, use_container_width=True)
@@ -105,13 +71,18 @@ with st.form("engagement_form", clear_on_submit=True):
     with c4:
         email = st.text_input("E-MAIL")
     
+    # Campo Drop-Down Referente
+    referente = st.selectbox(
+        "REFERENTE",
+        options=["TERRANI", "CENTOLA", "SANGUINETTI", "COLOMBO", "CATELLO"]
+    )
+    
     cas_engagement = st.text_area(
         "CAS ENGAGEMENT", 
         height=250, 
-        placeholder="Inserisci qui i dettagli dell'incontro (Note tecniche, opportunità, ecc...)"
+        placeholder="Inserisci qui i dettagli dell'incontro..."
     )
     
-    # Pulsante di salvataggio
     submit = st.form_submit_button("SALVA ANAGRAFICA CLIENTE")
 
 # --- LOGICA DI SALVATAGGIO ---
@@ -121,13 +92,14 @@ if submit:
     if nome and cognome:
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        # Preparazione dati per CSV (mantenendo l'ordine logico anche nel database)
+        # Preparazione dati per CSV
         new_data = {
             "Data": [timestamp],
             "Nome": [nome],
             "Cognome": [cognome],
             "Telefono": [tel],
             "Email": [email],
+            "Referente": [referente],
             "Engagement": [cas_engagement.replace("\n", " ")]
         }
         df = pd.DataFrame(new_data)
@@ -144,12 +116,11 @@ if submit:
         pdf = FPDF()
         pdf.add_page()
         
-        # Logo nel PDF se presente
         if os.path.exists(logo_fn):
             pdf.image(logo_fn, 150, 10, 40)
             
         pdf.set_font("Arial", "B", 16)
-        pdf.set_text_color(31, 83, 141) # Colore Blu Terrani
+        pdf.set_text_color(31, 83, 141)
         pdf.cell(0, 15, "SCHEDA CUSTOMER ENGAGEMENT", ln=True)
         
         pdf.set_font("Arial", "", 10)
@@ -157,13 +128,14 @@ if submit:
         pdf.cell(0, 10, f"Data report: {timestamp}", ln=True)
         pdf.ln(10)
         
-        # Sezione Anagrafica (Ordine PDF aggiornato)
+        # Sezione Anagrafica e Referente
         pdf.set_font("Arial", "B", 12)
         pdf.set_fill_color(230, 230, 230)
-        pdf.cell(0, 10, " DATI CLIENTE", 1, 1, "L", True)
+        pdf.cell(0, 10, " DATI CLIENTE E REFERENTE", 1, 1, "L", True)
         pdf.set_font("Arial", "", 11)
         pdf.cell(0, 10, f"Nominativo: {nome} {cognome}", 1, 1)
         pdf.cell(0, 10, f"Tel: {tel} | Email: {email}", 1, 1)
+        pdf.cell(0, 10, f"Referente Terrani Imaging: {referente}", 1, 1)
         
         # Sezione Note
         pdf.ln(5)
@@ -175,7 +147,6 @@ if submit:
         pdf_name = f"Engagement_{cognome}.pdf"
         pdf_bytes = pdf.output(dest='S').encode('latin-1')
         
-        # Tasto download PDF
         st.download_button(
             label="📥 SCARICA SCHEDA PDF",
             data=pdf_bytes,
